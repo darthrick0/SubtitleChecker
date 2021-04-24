@@ -1,6 +1,8 @@
 To use:
 
-This program searches all folders in current directory and subdirectories for .wav files and attempts to translate them with the google developers API. Details in developer API can be found in the speechrecognition module
+This program searches all folders in current directory and subdirectories for .wav files and attempts to translate them with the google developers API. Details in developer API can be found in the speechrecognition module. 
+
+Note on functionality: As of right now the files in directories searched must all be present in the Actual Subtitles CSV otherwise it will throw an error
 
 Example audio files are included in the zip file. About half the files are ripped from movies and have poor quality audio, the other are clear dialogue samples.
 

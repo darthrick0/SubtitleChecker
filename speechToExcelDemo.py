@@ -6,20 +6,56 @@ import pathlib
 import pandas
 import numpy as np
 import xlsxwriter
+import sys
 
-APP_FOLDER = os.getcwd()
+
 totalWAVFiles = 0
 r = sr.Recognizer()
-print(APP_FOLDER)
-expectedSubtitles = pandas.read_csv(APP_FOLDER + r"\ActualSubtitles.csv")
+
+#Get actual subtitle file from user
+validInput = False
+while validInput == False:
+	inCurrentDir = input("Is subtitle file in current Directory? (Y/N)")
+	if (inCurrentDir == "y") or (inCurrentDir == "Y"):
+		subtitleInput = input("Enter csv file containing file names and subtitles: ")
+		actualCSVFile = os.getcwd() + '\\' + subtitleInput
+	elif (inCurrentDir == "n") or (inCurrentDir == "N"):
+		actualCSVFile = input("Enter csv file path including csv file name: ")
+	else:
+		print ("Type Y or N")
+	if (os.path.exists(actualCSVFile)) and (".csv" in actualCSVFile):
+		validInput = True
+	else:
+		print("Enter Valid Path or File Name (must include .csv)")
+
+#get path from user
+validInput = False
+while validInput == False:
+	inCurrentDir = input("does current directory and/or subdirectories contain .wav files to transcribe (Y/N)")
+	if (inCurrentDir == "y") or (inCurrentDir == "Y"):
+		APP_FOLDER = os.getcwd()
+	elif (inCurrentDir == "n") or (inCurrentDir == "N"):
+		APP_FOLDER = input("Enter path containing .wav files")
+	else:
+		print ("Type Y or N")
+	if (os.path.exists(APP_FOLDER)):
+		validInput = True
+	else:
+# 		print("Enter Valid Path")
+
+#option to hardcode by defining APP_FOLDER and actualCSVFile ,just comment out user input sections and uncomment below
+APP_FOLDER = os.getcwd()
+actualCSVFile = APP_FOLDER + r"\ActualSubtitles.csv"
+
+expectedSubtitles = pandas.read_csv(actualCSVFile)
 expectedSubtitles.sort_values('File Name', inplace=True)
 expectedSubtitles.reset_index(inplace=True, drop=True)
-
+print(expectedSubtitles)
 generatedSubtitleDataList = []
-
+filesNotListed = []
 for dirname, dirs, files in os.walk(APP_FOLDER):
 	for fileName in files:
-		if fileName.endswith(".wav"):
+		if (fileName.endswith(".wav")) and (expectedSubtitles['File Name'].str.contains(fileName).any()):
 			print(fileName)
 			totalWAVFiles += 1
 			filePathInit = os.path.join(dirname, fileName)
@@ -38,18 +74,33 @@ for dirname, dirs, files in os.walk(APP_FOLDER):
 				print(confidenceString)
 				workingList = [fileName, transcriptString,confidenceString, filePathInit]
 				generatedSubtitleDataList.append(workingList)
+		elif fileName.endswith(".wav"):
+			filesNotListed.append(fileName)
 
-print(expectedSubtitles)
 generatedSubtitleData = pandas.DataFrame(generatedSubtitleDataList, columns=['File Name', 'Generated Subtitle', 'Confidence', 'File Path'])
 generatedSubtitleData.sort_values('File Name', inplace=True)
 generatedSubtitleData.reset_index(inplace=True, drop=True)
-print(generatedSubtitleData)
+
+listOfMissingExpectedFiles = []
+listOfPresentFileData = []
+
+currentIndex = 0
+for entry in expectedSubtitles['File Name']:
+	if generatedSubtitleData['File Name'].str.contains(entry).any():
+		presentFileData = [entry, expectedSubtitles.at[currentIndex,'Actual Subtitles']]
+		listOfPresentFileData.append(presentFileData)
+	else:
+		listOfMissingExpectedFiles.append(entry)
+	currentIndex += 1
+
+checkedExpectedSubtitles = pandas.DataFrame(listOfPresentFileData, columns=['File Name', 'Actual Subtitles'])
+# print(checkedExpectedSubtitles)
+# print(generatedSubtitleData)
 
 finalDataFrame = pandas.DataFrame()
-
-finalDataFrame['Matching'] = np.where(generatedSubtitleData['Generated Subtitle'] == expectedSubtitles['Actual Subtitles'], True, False)
-finalDataFrame['File Name'] = expectedSubtitles['File Name'].copy()
-finalDataFrame["Expected Subtitle"] = expectedSubtitles["Actual Subtitles"].copy()
+finalDataFrame['Matching'] = np.where(generatedSubtitleData['Generated Subtitle'] == checkedExpectedSubtitles['Actual Subtitles'], True, False)
+finalDataFrame['File Name'] = checkedExpectedSubtitles['File Name'].copy()
+finalDataFrame["Expected Subtitle"] = checkedExpectedSubtitles["Actual Subtitles"].copy()
 finalDataFrame['Generated Subtitle'] = generatedSubtitleData['Generated Subtitle'].copy()
 finalDataFrame['Confidence'] = generatedSubtitleData['Confidence'].copy().astype(float)
 finalDataFrame['Recommendation'] = np.where((finalDataFrame['Confidence'] < 0.98) | (finalDataFrame['Matching'] == "False"), "Review" , "-" )
@@ -58,7 +109,8 @@ finalDataFrame['File Path'] = generatedSubtitleData['File Path'].copy()
 number_rows = len(finalDataFrame.index)
 
 finalDataFrame = finalDataFrame[['Recommendation', 'File Name', 'Expected Subtitle', 'Generated Subtitle', 'Confidence', 'Matching', 'File Path']]
-#!!!could output to csv and be done here!!!
+#could output to csv and be done here, with no formatting and no missing files
+
 writer = pandas.ExcelWriter('ReviewThisFile.xlsx', engine='xlsxwriter')
 finalDataFrame.to_excel(writer, index=False, sheet_name='Data')
 workbook = writer.book
@@ -85,14 +137,27 @@ worksheet.conditional_format('A1:A{}'.format(number_rows+1),{'type': 'cell',
 															 'criteria': 'equal to',
 															 'value': '"-"',
 															 'format': ignoreFormat})
+
 worksheet.set_column('A1:A{}'.format(number_rows+1), 16, centerFormat)
 worksheet.set_column('B1:B{}'.format(number_rows+1), 40)
 worksheet.set_column('C1:D{}'.format(number_rows+1), 90)
-worksheet.set_column('E2:E{}'.format(number_rows+1), 14,percentFormat)
-worksheet.set_column('F1:F{}'.format(number_rows+1),12)
-worksheet.set_column('G1:G{}'.format(number_rows+1),100)
+worksheet.set_column('E2:E{}'.format(number_rows+1), 14, percentFormat)
+worksheet.set_column('F1:F{}'.format(number_rows+1), 12)
+worksheet.set_column('G1:G{}'.format(number_rows+1), 100)
 worksheet.autofilter('A1:G{}'.format(number_rows+1))
+
+worksheet2 = workbook.add_worksheet("Missing Files and Subtitles")
+worksheet2.write(0,0,"Files Not Listed:")
+worksheet2.write(0,1,"Files Expected but not Found")
+
+for row_num, fileNames in enumerate(filesNotListed):
+	worksheet2.write(row_num + 1, 0, fileNames)
+worksheet2.set_column('A1:A{}'.format(len(filesNotListed)), 40)
+
+for row_num, expectedFile in enumerate(listOfMissingExpectedFiles):
+	worksheet2.write(row_num + 1, 1, expectedFile)
+worksheet2.set_column('B1:B{}'.format(len(listOfMissingExpectedFiles)), 60)
 
 writer.save()
 print("Number of .WAV Files Read: " + str(totalWAVFiles))
-print('Excel File Created!!!')
+print('Excel File Created')

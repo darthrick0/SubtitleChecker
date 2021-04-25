@@ -1,8 +1,13 @@
 To use:
 
-This program searches all folders in current directory and subdirectories for .wav files and attempts to translate them with the google developers API. Details in developer API can be found in the speechrecognition module
+This program gets a csv file containing expected subtitles and a directory from user. It then searches the supplied directory for all .wav files listed in csv and uses google speech recognition to interpret the file and output comparison to an excel file
 
-Example audio files are included in the zip file. About half the files are ripped from movies and have poor quality audio, the other are clear dialogue samples.
+The speech recognition is performed by the Google Speech Recognition API with a generic key
+
+Example audio files are included in the zip file. About half the files are ripped from movies and have poor quality audio, the other are clear dialogue samples
+
+
+
 
 See Comments.docx for more details on the following comments (regarding performance with test audio)
 Weird issues (at 95% cuttoff):

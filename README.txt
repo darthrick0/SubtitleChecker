@@ -1,12 +1,8 @@
-To use:
-
 This program gets a csv file containing expected subtitles and a directory from user. It then searches the supplied directory for all .wav files listed in csv and uses google speech recognition to interpret the file and output comparison to an excel file
 
 The speech recognition is performed by the Google Speech Recognition API with a generic key
 
 Example audio files are included in the zip file. About half the files are ripped from movies and have poor quality audio, the other are clear dialogue samples
-
-
 
 
 See Comments.docx for more details on the following comments (regarding performance with test audio)

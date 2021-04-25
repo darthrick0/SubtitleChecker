@@ -33,27 +33,27 @@ validInput = False
 while validInput == False:
 	inCurrentDir = input("does current directory and/or subdirectories contain .wav files to transcribe (Y/N)")
 	if (inCurrentDir == "y") or (inCurrentDir == "Y"):
-		APP_FOLDER = os.getcwd()
+		wavFolder = os.getcwd()
 	elif (inCurrentDir == "n") or (inCurrentDir == "N"):
-		APP_FOLDER = input("Enter path containing .wav files")
+		wavFolder = input("Enter path containing .wav files")
 	else:
 		print ("Type Y or N")
-	if (os.path.exists(APP_FOLDER)):
+	if (os.path.exists(wavFolder)):
 		validInput = True
 	else:
-# 		print("Enter Valid Path")
+		print("Enter Valid Path")
 
-#option to hardcode by defining APP_FOLDER and actualCSVFile ,just comment out user input sections and uncomment below
-APP_FOLDER = os.getcwd()
-actualCSVFile = APP_FOLDER + r"\ActualSubtitles.csv"
+#option to hardcode by defining wavFolder and actualCSVFile ,just comment out user input sections and uncomment below
+# wavFolder = os.getcwd()
+# actualCSVFile = wavFolder + r"\ActualSubtitles.csv"
 
 expectedSubtitles = pandas.read_csv(actualCSVFile)
 expectedSubtitles.sort_values('File Name', inplace=True)
 expectedSubtitles.reset_index(inplace=True, drop=True)
-print(expectedSubtitles)
+#print(expectedSubtitles)
 generatedSubtitleDataList = []
 filesNotListed = []
-for dirname, dirs, files in os.walk(APP_FOLDER):
+for dirname, dirs, files in os.walk(wavFolder):
 	for fileName in files:
 		if (fileName.endswith(".wav")) and (expectedSubtitles['File Name'].str.contains(fileName).any()):
 			print(fileName)
